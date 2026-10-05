@@ -12,6 +12,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import glyph_goblin as app
 import ocr_bridge
+import image_interpreter as interpreter
 
 
 def recognized(text="12 + 7 * 3\n(18 - 6) / 4\n5 > 3", others=None):
@@ -24,31 +25,31 @@ def recognized(text="12 + 7 * 3\n(18 - 6) / 4\n5 > 3", others=None):
 
 class ExpressionTests(unittest.TestCase):
     def test_allowed_arithmetic_and_logic(self):
-        self.assertEqual(app.safe_expression("12 + 7 * 3"), 33)
-        self.assertEqual(app.safe_expression("(18 - 6) / 4"), 3.0)
-        self.assertIs(app.safe_expression("5 > 3 and not False"), True)
-        self.assertEqual(app.safe_expression("8 % 3"), 2)
+        self.assertEqual(interpreter.safe_expression("12 + 7 * 3"), 33)
+        self.assertEqual(interpreter.safe_expression("(18 - 6) / 4"), 3.0)
+        self.assertIs(interpreter.safe_expression("5 > 3 and not False"), True)
+        self.assertEqual(interpreter.safe_expression("8 % 3"), 2)
 
     def test_unsafe_or_unbounded_expressions_rejected(self):
         for text in ["__import__('os').system('bad')", "a", "[1][0]", "2**99", "1<<3", "(1,2)",
                      "1/0", "1e309", "1000000000001", "1 < 2 < 3", "1 + \u2212 2", "(" * 1000]:
-            with self.subTest(text=text), self.assertRaises(app.Rejected):
-                app.safe_expression(text)
+            with self.subTest(text=text), self.assertRaises(interpreter.Rejected):
+                interpreter.safe_expression(text)
 
     def test_structure_consensus_ignores_only_whitespace(self):
         value = recognized("12 + 7 * 3", ["12+7*3", "12 + 7*3", "12+7 * 3"])
-        _, values, evidence = app.select_ocr_expressions(value)
+        _, values, evidence = interpreter.select_ocr_expressions(value)
         self.assertEqual(values, [33]); self.assertEqual(evidence["agreeing_passes"], 3)
 
     def test_operator_program_changes_computation_with_same_operands(self):
-        self.assertEqual(app.safe_expression("12 + 7 * 3"), 33)
-        self.assertEqual(app.safe_expression("12 + 7 - 3"), 16)
-        self.assertIs(app.safe_expression("5 > 3"), True)
-        self.assertIs(app.safe_expression("5 < 3"), False)
+        self.assertEqual(interpreter.safe_expression("12 + 7 * 3"), 33)
+        self.assertEqual(interpreter.safe_expression("12 + 7 - 3"), 16)
+        self.assertIs(interpreter.safe_expression("5 > 3"), True)
+        self.assertIs(interpreter.safe_expression("5 < 3"), False)
 
     def test_equal_answers_do_not_hide_different_expressions(self):
-        with self.assertRaises(app.Rejected):
-            app.select_ocr_expressions(recognized("3 + 3", ["3+3", "2*3", "3+3"]))
+        with self.assertRaises(interpreter.Rejected):
+            interpreter.select_ocr_expressions(recognized("3 + 3", ["3+3", "2*3", "3+3"]))
 
     def test_disagreement_missing_or_duplicate_pass_fails_closed(self):
         samples = [recognized("12 + 30", ["12+30", "12+31", "12+30"]), recognized("", ["", "", ""])]
@@ -58,7 +59,7 @@ class ExpressionTests(unittest.TestCase):
         malformed = recognized(); malformed["passes"][0]["profile"] = "wrong"; samples.append(malformed)
         samples.append(None)
         for sample in samples:
-            with self.assertRaises(app.Rejected): app.select_ocr_expressions(sample)
+            with self.assertRaises(interpreter.Rejected): interpreter.select_ocr_expressions(sample)
 
 
 class CarrierTests(unittest.TestCase):
@@ -68,12 +69,12 @@ class CarrierTests(unittest.TestCase):
             ti = app.load_carrier(Path(tmp) / "input.tiff")[1]
             gi = app.load_carrier(Path(tmp) / "input.gif")[1]
             self.assertEqual(ti.crop(tuple(app.CROP)).tobytes(), gi.crop(tuple(app.CROP)).tobytes())
-            self.assertEqual(app.decode_payload(gi), app.JOB)
+            self.assertEqual(app.decode_payload(gi), app.default_job())
 
     def test_checksum_corruption_and_arbitrary_job_rejected(self):
         image = app.make_input(); image.putpixel((0, app.Y0), (17, 17, 17))
         with self.assertRaises(app.Rejected): app.decode_payload(image)
-        bad = copy.deepcopy(app.JOB); bad["params"]["shell"] = "whatever"
+        bad = copy.deepcopy(app.default_job()); bad["params"]["shell"] = "whatever"
         with self.assertRaises(app.Rejected): app.encode_payload(app.make_input(), bad)
         with self.assertRaises(app.Rejected): app.decode_payload(Image.new("RGB", (1, 1)))
 
@@ -165,7 +166,7 @@ class BackendTests(unittest.TestCase):
     @unittest.skipUnless(os.environ.get("TESSERACT_TEST_CMD"), "Set TESSERACT_TEST_CMD for a real OCR integration test")
     def test_real_tesseract_reads_demo_pixels(self):
         with tempfile.TemporaryDirectory() as tmp:
-            source = Path(__file__).resolve().parents[1] / "examples" / "input.tiff"
+            source = Path(__file__).resolve().parents[1] / "examples-v0.4.0" / "input.tiff"
             receipt, _ = app.execute_carrier(source, Path(tmp) / "out", tesseract=os.environ["TESSERACT_TEST_CMD"],
                                              tessdata_dir=os.environ.get("TESSDATA_PREFIX"))
             self.assertEqual(receipt["values"], [33, 3.0, True])
@@ -174,8 +175,8 @@ class BackendTests(unittest.TestCase):
     @unittest.skipUnless(os.environ.get("TESSERACT_TEST_CMD"), "Set TESSERACT_TEST_CMD for real image-program mutation tests")
     def test_real_image_operator_program_tiff_gif_and_output_refresh(self):
         with tempfile.TemporaryDirectory() as tmp:
-            originals = Path(__file__).resolve().parents[1] / "examples"
-            changed = Path(__file__).resolve().parents[1] / "examples" / "operator-variant"
+            originals = Path(__file__).resolve().parents[1] / "examples-v0.4.0"
+            changed = Path(__file__).resolve().parents[1] / "examples-v0.4.0" / "operator-variant"
             for kind in ("tiff", "gif"):
                 kwargs = {"tesseract": os.environ["TESSERACT_TEST_CMD"], "tessdata_dir": os.environ.get("TESSDATA_PREFIX")}
                 original, _ = app.execute_carrier(originals / ("input." + kind), Path(tmp) / "out", **kwargs)
@@ -183,7 +184,7 @@ class BackendTests(unittest.TestCase):
                 self.assertEqual(original["values"], [33, 3.0, True])
                 self.assertEqual(altered["values"], [16, 3.0, False])
                 self.assertNotEqual(original["program"]["glyph_pixels_sha256"], altered["program"]["glyph_pixels_sha256"])
-                self.assertEqual(app.JOB, app.load_carrier(changed / ("input." + kind))[0])
+                self.assertEqual(app.default_job(), app.load_carrier(changed / ("input." + kind))[0])
                 rerun, _ = app.execute_carrier(folder / ("result." + kind), Path(tmp) / "out", frame=3, **kwargs)
                 self.assertEqual(rerun["values"], altered["values"])
 
