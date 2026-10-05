@@ -1,0 +1,6 @@
+JA21 OCR Studio 0.1.0
+
+Copyright (c) 2026 Russell Philip Smithson.
+No public project license was specified for this lab build. All rights are reserved by default.
+
+This notice does not change the licenses of third-party components. Tesseract OCR is a separate project distributed under the Apache License 2.0. The supplied Windows installer is treated as a reference lab artifact and is identified by hash in THIRD_PARTY_NOTICES.md.

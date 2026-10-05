@@ -1,0 +1,68 @@
+{
+  "source_distribution": "JA21 OCR Studio 0.4.0 standalone; documented 0.3.2 OCR core",
+  "installer_sha256": "eb743aa76bdd0505c418afb28c48296d7edd91a677e4e6329efd4be469f5f31f",
+  "extraction": "Read-only bounded archive parsing; installers were not executed",
+  "files": [
+    {
+      "path": "vendor/ja21_ocr/__init__.py",
+      "original_member": "FullSource/src/ja21_ocr/__init__.py",
+      "sha256": "bcd896275e2bfdcc39b7fed40ea0d021566f95a74a146c871f66afb0ba4ded58",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/adaptive.py",
+      "original_member": "FullSource/src/ja21_ocr/adaptive.py",
+      "sha256": "8fb9693e1620f0f1251055c389609ddc6bcb625d3ccf86abf7e74c2708a4a631",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/agreement.py",
+      "original_member": "FullSource/src/ja21_ocr/agreement.py",
+      "sha256": "2865fd11ae817395021f09c13176a0b80eb3664a95d25d788a89c5ec95ffb180",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/confidence.py",
+      "original_member": "FullSource/src/ja21_ocr/confidence.py",
+      "sha256": "97a9b3f7b09a8ce73d97fc88a15d5b1ef23355a8d5356de3bbf307f3e6be5b93",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/geometry.py",
+      "original_member": "FullSource/src/ja21_ocr/geometry.py",
+      "sha256": "307019b65387a8054a0e0fbbface375be2ab8ff4aa59ace3ed0665a06c2b2750",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/models.py",
+      "original_member": "FullSource/src/ja21_ocr/models.py",
+      "sha256": "19ea743920d048b3bf519d4eb1f725d5037dcc7bab1fa97adbe88cdd9700c9d0",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/preprocess.py",
+      "original_member": "FullSource/src/ja21_ocr/preprocess.py",
+      "sha256": "bf9013707d7011e5d260ce01b7754393febec908c7a1acd9a04fb40356e314ff",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/profiles.py",
+      "original_member": "FullSource/src/ja21_ocr/profiles.py",
+      "sha256": "ff6043bd22c225792f171e61938d38b5df0027ef2c1c35198a781fc9ffe7d435",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/quality.py",
+      "original_member": "FullSource/src/ja21_ocr/quality.py",
+      "sha256": "552a5effa6508549c5e0d7c9083d37111c383894368b4ebc3bd1f7f08aa31093",
+      "modified": false
+    },
+    {
+      "path": "vendor/ja21_ocr/verification.py",
+      "original_member": "FullSource/src/ja21_ocr/verification.py",
+      "sha256": "0d1b1f0ad050a421d86e30f9eb31db8b766f794254eefef808cd17c87056e8fd",
+      "modified": false
+    }
+  ],
+  "release_license": "GPL-3.0-only by release owner request; historical notice retained separately"
+}
