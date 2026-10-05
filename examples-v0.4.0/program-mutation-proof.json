@@ -1,0 +1,85 @@
+{
+  "version": "0.4.0",
+  "method": "Frozen consumer executable, real local Tesseract, no installed toolchain in PATH",
+  "interpreter_loaded_from_pixels": true,
+  "runtime_and_operands_unchanged": true,
+  "operator_edits": [
+    "12 + 7 * 3 -> 12 + 7 - 3",
+    "5 > 3 -> 5 < 3"
+  ],
+  "cases": [
+    {
+      "case": "original",
+      "format": "tiff",
+      "expressions": [
+        "12 +7 * 3",
+        "(18 - 6) /4",
+        "5 > 3"
+      ],
+      "values": [
+        33,
+        3.0,
+        true
+      ],
+      "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+      "agreeing_passes": 6,
+      "exported_image_reexecution_passed": true,
+      "evidence": "from-tiff/receipt.json"
+    },
+    {
+      "case": "changed",
+      "format": "tiff",
+      "expressions": [
+        "12 +7 - 3",
+        "(18 - 6) /4",
+        "5 < 3"
+      ],
+      "values": [
+        16,
+        3.0,
+        false
+      ],
+      "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+      "agreeing_passes": 6,
+      "exported_image_reexecution_passed": true,
+      "evidence": "operator-variant/from-tiff/receipt.json"
+    },
+    {
+      "case": "original",
+      "format": "gif",
+      "expressions": [
+        "12 +7 * 3",
+        "(18 - 6) /4",
+        "5 > 3"
+      ],
+      "values": [
+        33,
+        3.0,
+        true
+      ],
+      "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+      "agreeing_passes": 6,
+      "exported_image_reexecution_passed": true,
+      "evidence": "from-gif/receipt.json"
+    },
+    {
+      "case": "changed",
+      "format": "gif",
+      "expressions": [
+        "12 +7 - 3",
+        "(18 - 6) /4",
+        "5 < 3"
+      ],
+      "values": [
+        16,
+        3.0,
+        false
+      ],
+      "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+      "agreeing_passes": 6,
+      "exported_image_reexecution_passed": true,
+      "evidence": "operator-variant/from-gif/receipt.json"
+    }
+  ],
+  "expected_answers_in_execution_inputs": false
+}
