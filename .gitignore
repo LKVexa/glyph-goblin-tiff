@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+runs/
+.pytest_cache/
+*.traineddata
+*.exe
+*.dll
+*.pyd
+.DS_Store
