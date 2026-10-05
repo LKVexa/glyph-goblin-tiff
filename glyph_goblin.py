@@ -1,14 +1,12 @@
-"""Glyph Goblin TIFF 0.3.0: raster programs executed by a bounded OCR/AST runtime.
+"""Glyph Goblin TIFF 0.4.0: raster programs and their interpreter carried in pixels.
 
 Copyright (c) 2026 Russell Philip Smithson. SPDX-License-Identifier: GPL-3.0-only
 """
 from __future__ import annotations
-import ast
 import hashlib
 import io
 import json
 import math
-import operator
 from pathlib import Path
 import struct
 import uuid
@@ -17,12 +15,13 @@ import warnings
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-VERSION = "0.3.0"
-WIDTH, HEIGHT, Y0, CELL = 960, 720, 512, 2
-MAGIC = b"TGCLAB01"
-MAX_FILE, MAX_PIXELS, MAX_FRAMES, MAX_PAYLOAD = 32 * 1024 * 1024, 4_000_000, 32, 4096
+VERSION = "0.4.0"
+WIDTH, HEIGHT, Y0, CELL = 960, 720, 512, 1
+MAGIC = b"GLYPH004"
+MAX_FILE, MAX_PIXELS, MAX_FRAMES, MAX_PAYLOAD = 32 * 1024 * 1024, 4_000_000, 32, 24000
+Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 CROP = [40, 142, 920, 394]
-JOB = {"schema": "tgc-job/1", "kind": "arithmetic-ocr", "params": {"crop": CROP}}
+JOB_HEADER = {"schema": "glyph-image-program/4", "kind": "arithmetic-ocr", "params": {"crop": CROP}}
 
 
 class Rejected(ValueError):
@@ -56,19 +55,31 @@ def unique_directory(parent, prefix="run-"):
 
 
 def validate_job(job):
-    if not isinstance(job, dict) or set(job) != {"schema", "kind", "params"}:
+    if not isinstance(job, dict) or set(job) != {"schema", "kind", "params", "runtime"}:
         raise Rejected("Unexpected job fields")
-    if job.get("schema") != "tgc-job/1" or job.get("kind") != "arithmetic-ocr":
+    if job.get("schema") != "glyph-image-program/4" or job.get("kind") != "arithmetic-ocr":
         raise Rejected("Unsupported job schema or operation")
     p = job["params"]
     if not isinstance(p, dict) or set(p) != {"crop"} or not isinstance(p["crop"], list):
         raise Rejected("Invalid OCR crop contract")
     if p["crop"] != CROP or any(type(v) is not int for v in p["crop"]):
         raise Rejected("Unsupported OCR input rectangle")
+    from runtime_bootstrap import validate_runtime
+    validate_runtime(job["runtime"])
     return job
 
 
-def encode_payload(image, job=JOB):
+def default_job():
+    # Authoring only. The desktop/player never needs this file.
+    payload = Path(__file__).with_name("runtime-payload.json")
+    if not payload.is_file():
+        raise Rejected("Authoring runtime payload missing; run build_runtime.py")
+    return {**JOB_HEADER, "runtime": json.loads(payload.read_text(encoding="ascii"))}
+
+
+def encode_payload(image, job=None):
+    if job is None:
+        job = default_job()
     validate_job(job)
     if image.size != (WIDTH, HEIGHT):
         raise Rejected("Carrier dimensions do not match profile")
@@ -119,6 +130,53 @@ def decode_payload(image):
         raise Rejected("Malformed or unsupported payload") from exc
 
 
+def preflight_gif(data):
+    """Check every frame rectangle before a native decoder sees a GIF."""
+    if not data.startswith((b"GIF87a", b"GIF89a")):
+        return
+    if len(data) < 13 or struct.unpack_from("<HH", data, 6) != (WIDTH, HEIGHT):
+        raise Rejected("GIF logical canvas is outside the carrier profile")
+    position = 13 + (3 * (1 << ((data[10] & 7) + 1)) if data[10] & 128 else 0)
+    frames = 0
+    def blocks(offset):
+        while True:
+            if offset >= len(data):
+                raise Rejected("Truncated GIF blocks")
+            length = data[offset]
+            offset += 1
+            if length == 0:
+                return offset
+            offset += length
+            if offset > len(data):
+                raise Rejected("Truncated GIF block data")
+    while position < len(data):
+        marker = data[position]
+        position += 1
+        if marker == 0x3B:
+            if frames == 0 or position != len(data):
+                raise Rejected("Empty GIF or trailing unrecognized data")
+            return
+        if marker == 0x21:
+            if position >= len(data):
+                raise Rejected("Truncated GIF extension")
+            position = blocks(position + 1)
+        elif marker == 0x2C:
+            if position + 9 > len(data):
+                raise Rejected("Truncated GIF image descriptor")
+            left, top, width, height = struct.unpack_from("<HHHH", data, position)
+            packed = data[position + 8]
+            frames += 1
+            if frames > MAX_FRAMES or width == 0 or height == 0 or left + width > WIDTH or top + height > HEIGHT:
+                raise Rejected("GIF frame rectangle/count outside carrier bounds")
+            position += 9 + (3 * (1 << ((packed & 7) + 1)) if packed & 128 else 0)
+            if position >= len(data) or not 2 <= data[position] <= 8:
+                raise Rejected("Invalid GIF LZW profile")
+            position = blocks(position + 1)
+        else:
+            raise Rejected("Unsupported GIF block")
+    raise Rejected("GIF trailer missing")
+
+
 def load_carrier(path, frame=0):
     path = Path(path)
     if type(frame) is not int or not 0 <= frame < MAX_FRAMES:
@@ -129,6 +187,7 @@ def load_carrier(path, frame=0):
         data = handle.read(MAX_FILE + 1)
     if len(data) > MAX_FILE:
         raise Rejected("Image file size limit")
+    preflight_gif(data)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -137,104 +196,26 @@ def load_carrier(path, frame=0):
                     raise Rejected("Unsupported carrier format")
                 if opened.size != (WIDTH, HEIGHT):
                     raise Rejected("Carrier dimensions do not match profile")
-                # Do not ask n_frames to scan an unbounded animation/IFD chain.
-                try:
-                    opened.seek(MAX_FRAMES)
-                except EOFError:
-                    pass
-                else:
-                    raise Rejected("Carrier frame count exceeds profile")
-                # Pillow's failed TIFF seek may advance tell() without loading
-                # that page's metadata; force a reset before selecting a page.
-                opened.seek(0)
-                opened.seek(frame)
-                if opened.size != (WIDTH, HEIGHT):
-                    raise Rejected("Selected frame dimensions do not match profile")
-                image = opened.convert("RGB")
+                # Check every preceding/current page before advancing a decoder.
+                # Never bulk-seek across unchecked GIF/TIFF pages.
+                image = None
+                for index in range(MAX_FRAMES + 1):
+                    try:
+                        opened.seek(index)
+                    except EOFError:
+                        break
+                    if index == MAX_FRAMES:
+                        raise Rejected("Carrier frame count exceeds profile")
+                    if opened.size != (WIDTH, HEIGHT):
+                        raise Rejected("A carrier frame has unsupported dimensions")
+                    if index == frame:
+                        image = opened.convert("RGB")
+                if image is None:
+                    raise Rejected("Requested frame does not exist")
                 return validate_job(decode_payload(image)), image, data
     except (OSError, EOFError, Image.DecompressionBombWarning, Image.DecompressionBombError) as exc:
         raise Rejected("Unreadable or oversized carrier") from exc
 
-
-def parse_expression(text):
-    if not isinstance(text, str) or not 0 < len(text) <= 200 or not text.isascii():
-        raise Rejected("Expression must contain 1..200 ASCII characters")
-    try:
-        tree = ast.parse(text.strip(), mode="eval")
-    except (SyntaxError, ValueError, RecursionError) as exc:
-        raise Rejected("OCR did not produce a valid expression") from exc
-    if len(list(ast.walk(tree))) > 64:
-        raise Rejected("Expression complexity limit")
-    binary = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
-              ast.Div: operator.truediv, ast.Mod: operator.mod}
-    compare = {ast.Eq: operator.eq, ast.NotEq: operator.ne, ast.Lt: operator.lt,
-               ast.LtE: operator.le, ast.Gt: operator.gt, ast.GtE: operator.ge}
-    def visit(node, depth=0):
-        if depth > 16:
-            raise Rejected("Expression depth limit")
-        child = lambda value: visit(value, depth + 1)
-        if isinstance(node, ast.Constant) and type(node.value) in (int, float, bool):
-            result = node.value
-        elif isinstance(node, ast.BinOp) and type(node.op) in binary:
-            try:
-                result = binary[type(node.op)](child(node.left), child(node.right))
-            except (ZeroDivisionError, OverflowError) as exc:
-                raise Rejected("Undefined arithmetic") from exc
-        elif isinstance(node, ast.UnaryOp) and type(node.op) in (ast.UAdd, ast.USub, ast.Not):
-            result = {ast.UAdd: operator.pos, ast.USub: operator.neg, ast.Not: operator.not_}[type(node.op)](child(node.operand))
-        elif isinstance(node, ast.BoolOp) and type(node.op) in (ast.And, ast.Or):
-            values = [bool(child(value)) for value in node.values]
-            result = all(values) if isinstance(node.op, ast.And) else any(values)
-        elif isinstance(node, ast.Compare) and len(node.ops) == 1 and type(node.ops[0]) in compare:
-            result = compare[type(node.ops[0])](child(node.left), child(node.comparators[0]))
-        else:
-            raise Rejected("Expression contains an unsupported operation")
-        if type(result) not in (bool, int, float) or abs(result) > 1e12 or not math.isfinite(result):
-            raise Rejected("Numeric range exceeded")
-        return result
-    return tree, visit(tree.body)
-
-
-def safe_expression(text):
-    return parse_expression(text)[1]
-
-
-def select_ocr_expressions(recognized):
-    if not isinstance(recognized, dict):
-        raise Rejected("Invalid OCR evidence object")
-    def parse_lines(text):
-        if not isinstance(text, str) or len(text) > 2048:
-            raise Rejected("OCR text length limit")
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        if not 1 <= len(lines) <= 6:
-            raise Rejected("OCR must provide 1..6 nonempty expressions")
-        parsed = [parse_expression(line) for line in lines]
-        return lines, [ast.dump(tree, include_attributes=False) for tree, _ in parsed], [value for _, value in parsed]
-    lines, meaning, values = parse_lines(recognized.get("text"))
-    passes = recognized.get("passes")
-    if not isinstance(passes, list) or len(passes) not in (3, 6):
-        raise Rejected("Three or six independent OCR passes are required")
-    numbers, profiles = set(), set()
-    for item in passes:
-        if not isinstance(item, dict) or type(item.get("pass_number")) is not int:
-            raise Rejected("Invalid OCR pass evidence")
-        profile_info = item.get("profile")
-        if not isinstance(profile_info, dict):
-            raise Rejected("Invalid OCR profile evidence")
-        number, profile = item["pass_number"], profile_info.get("profile_id")
-        if number in numbers or not isinstance(profile, str) or not profile or profile in profiles:
-            raise Rejected("Duplicated or missing OCR pass identity")
-        numbers.add(number); profiles.add(profile)
-        if parse_lines(item.get("text"))[1] != meaning:
-            raise Rejected("OCR passes disagree on expression structure; computation withheld")
-    if numbers != set(range(1, len(passes) + 1)):
-        raise Rejected("OCR pass sequence is incomplete")
-    geometry = recognized.get("geometry")
-    if not isinstance(geometry, dict) or geometry.get("passed") is not True:
-        raise Rejected("OCR token geometry did not pass validation")
-    return lines, values, {"agreeing_passes": len(passes), "rule": "all pass AST structures agree",
-                          "upstream_manual_review_required": bool(recognized.get("manual_review_required", True)),
-                          "scope": "agreement is not independent proof of OCR accuracy"}
 
 
 def font(size):
@@ -252,13 +233,13 @@ def make_input(expressions=("12 + 7 * 3", "(18 - 6) / 4", "5 > 3")):
     image = Image.new("RGB", (WIDTH, HEIGHT), "#101a2b")
     draw = ImageDraw.Draw(image)
     draw.text((32, 28), "GLYPH GOBLIN TIFF", font=font(30), fill="#a8f0d1")
-    draw.text((32, 82), "Pixels carry expressions. Local OCR and Python compute.", font=font(21), fill="white")
+    draw.text((32, 82), "Interpreter + expressions in pixels. Real OCR provides input.", font=font(21), fill="white")
     draw.rectangle(CROP, fill="white")
     for index, text in enumerate(expressions):
         draw.text((66, 154 + index * 75), text, font=font(43), fill="black")
     binary = image.crop(tuple(CROP)).convert("L").point(lambda value: 255 if value >= 160 else 0)
     image.paste(binary.convert("RGB"), tuple(CROP))
-    draw.text((32, 456), "Checksum-verified raster job | offline processing", font=font(21), fill="#a8f0d1")
+    draw.text((32, 456), "Image-resident interpreter | bounded local execution", font=font(21), fill="#a8f0d1")
     return encode_payload(image)
 
 
@@ -287,6 +268,7 @@ def save_examples(folder, expressions=("12 + 7 * 3", "(18 - 6) / 4", "5 > 3")):
 def save_result_carriers(folder, source, lines, values):
     """Refresh outputs while retaining the exact source-program glyph pixels."""
     folder = Path(folder)
+    job = decode_payload(source)
     frames = [source.convert("RGB")]
     for count in range(1, len(lines) + 1):
         image = source.convert("RGB")
@@ -300,7 +282,7 @@ def save_result_carriers(folder, source, lines, values):
                   font=font(24), fill="#a8f0d1")
         draw.text((32, 463), f"Expression {count}/{len(lines)} | 3/6-pass agreement required | v{VERSION}",
                   font=font(17), fill="white")
-        frames.append(encode_payload(image))
+        frames.append(encode_payload(image, job))
     paths = {"TIFF": folder / "result.tiff", "GIF": folder / "result.gif"}
     if any(path.exists() for path in paths.values()):
         raise Rejected("Result carrier destination already exists")
@@ -321,7 +303,9 @@ def save_result_carriers(folder, source, lines, values):
 
 
 def execute_carrier(path, output="runs", *, frame=0, tesseract=None, tessdata_dir=None, recognizer=None):
-    _, image, original = load_carrier(path, frame)
+    job, image, original = load_carrier(path, frame)
+    from runtime_bootstrap import load_runtime
+    interpreter = load_runtime(job["runtime"])
     folder = unique_directory(output)
     extension = {".gif": ".gif", ".png": ".png"}.get(Path(path).suffix.lower(), ".tiff")
     (folder / ("source-copy" + extension)).write_bytes(original)
@@ -336,13 +320,17 @@ def execute_carrier(path, output="runs", *, frame=0, tesseract=None, tessdata_di
         else:
             recognized = recognizer(folder / "ocr-input.png", folder / "ocr")
         write_json(folder / "ocr-result.json", recognized)
-        lines, values, agreement = select_ocr_expressions(recognized)
+        try:
+            lines, values, agreement = interpreter.select_ocr_expressions(recognized)
+        except ValueError as exc:
+            raise Rejected(str(exc)) from exc
         output_carriers = save_result_carriers(folder, image, lines, values)
         receipt.update(accepted=True, expressions=lines, values=values, consensus=agreement,
                        backend=recognized["backend"], raw_ocr_sha256=digest(recognized["text"].encode("utf-8")))
         receipt["program"] = {"representation": "visible raster glyphs of arithmetic/logic expressions",
                               "glyph_pixels_sha256": digest(image.crop(tuple(CROP)).tobytes()),
-                              "interpreter": "generic bounded AST interpreter on local CPU",
+                              "interpreter": "hash-approved interpreter module recovered from raster pixels",
+                              "runtime_location": "image pixels", "runtime_sha256": job["runtime"]["sha256"],
                               "answers_supplied_by_metadata": False}
         receipt["output_carriers"] = output_carriers
     except Exception as exc:

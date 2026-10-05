@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 — 2026-10-05
+
+- Moved parsing, OCR structure consensus and evaluation into an approved interpreter module carried inside TIFF/GIF pixels. The bootstrap verifies its exact source hash before loading it in memory, with no host-module fallback.
+- Added a self-contained Windows player that opens its bundled image and computes automatically without installed Python, Tesseract or model files.
+- Built a minimal static Tesseract 5.5.0/Leptonica 1.85.0 OCR sensor from upstream source; preserved JA21 preprocessing and transported prepared pixels losslessly as BMP.
+- Added GIF structure checks before native decoding, including all frame rectangles and the bounded frame count.
+- Added packaged execution, operator-mutation, output-reexecution, rejection and GUI checks; included corresponding project source, upstream OCR sources and dependency notices.
+
 ## 0.3.0 — 2026-10-05
 
 - Made the raster-program contract explicit: operators and operands are read from image glyphs and executed by a generic bounded AST interpreter.

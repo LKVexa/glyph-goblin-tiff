@@ -1,121 +1,201 @@
 {
   "project": "glyph-goblin-tiff",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "audit_date": "2026-10-05",
   "status": "scoped_checks_passed",
-  "scope": "Standalone raster OCR arithmetic; manual source review plus automated adversarial and real-backend checks",
+  "scope": "Image-resident interpreter, JA21-assisted real OCR, self-contained Windows consumer package; source and frozen-executable checks",
   "tests": {
     "command": "python -m unittest discover -s tests -v",
-    "total": 18,
-    "passed": 18,
+    "total": 27,
+    "passed": 27,
     "failed": 0,
     "skipped": 0,
     "real_backend_enabled": true,
-    "normal_without_backend_environment": "16 pass and 2 real OCR integration tests skipped"
+    "without_backend_environment": "25 pass; 2 real OCR tests skipped"
   },
   "tested_environment": {
+    "platform": "Windows x64",
     "python": "3.12.14",
     "numpy": "2.3.5",
     "Pillow": "12.3.0",
-    "platform": "Windows x64",
-    "tesseract": "tesseract v5.5.0.20241111",
-    "tesseract_sha256": "ccd044d6cf16eaaad151260e1fcc5e3e1504cd1b8644e940b4f7ae3e315dd0d3",
-    "english_model_sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
+    "PyInstaller": "6.22.3",
+    "tesseract": "5.5.0",
+    "leptonica": "1.85.0",
+    "native_compiler": "MinGW-w64 UCRT GCC 16.2.0",
+    "cmake": "4.4.4"
   },
-  "actual_demonstration": {
-    "TIFF": [
-      33,
-      3.0,
-      true
-    ],
-    "GIF": [
-      33,
-      3.0,
-      true
-    ],
-    "all_six_passes_agree_on_expression_AST": true,
-    "preserved_upstream_manual_review_required": true,
-    "source_pixels_contain_program": "Numbers, operators and parentheses are read from glyph pixels and interpreted as bounded AST; results are not supplied by metadata",
-    "operator_variant_TIFF": [
-      16,
-      3.0,
-      false
-    ],
-    "operator_variant_GIF": [
-      16,
-      3.0,
-      false
-    ],
-    "output_carrier_reexecution_checks": 4,
-    "refreshed_output_artifacts": true
+  "interpreter": {
+    "location": "TIFF/GIF raster pixels",
+    "format": "python-source/gzip-base64",
+    "sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+    "approved_source_hash_checked_before_compile": true,
+    "host_interpreter_module_fallback": false,
+    "runtime_payload_disk_fallback": false,
+    "external_bootstrap": [
+      "CPython and ast/math/operator",
+      "Pillow/NumPy",
+      "JA21 preprocessing helpers",
+      "Tesseract OCR",
+      "desktop UI"
+    ]
   },
-  "fixed_findings": [
-    "Executable/model configuration was tied to one host and a sibling tessdata directory; explicit and environment-based paths now supported.",
-    "Evidence paths could overwrite or expose source context; unique inherited-permission folders and exact source snapshots now used.",
-    "Process output and TSV tokens lacked tight limits; bounded subprocess polling, deadlines and token validation added.",
-    "Unicode glyph substitutions and confidence-only selection could conceal a wrong expression; strict ASCII syntax and all-pass structure consensus now gate computation.",
-    "Duplicate/missing pass identities or invalid geometry could pass insufficient validation; explicit evidence shape checks added.",
-    "Full frame-count queries could scan arbitrarily many frames; scan bounded to first 33 frames.",
-    "Failed TIFF seek can leave stale page metadata; reset to page zero before selecting final frame.",
-    "Result-export failure could leave a premature success receipt; accepted status is now set only after both output carriers verify."
-  ],
-  "public_tree_checks": {
-    "no_user_home_paths": true,
-    "no_binaries_or_language_models": true,
-    "no_uploaded_source_documents": true,
-    "original_JA21_modules_unmodified": 10,
-    "original_source_hash_manifest": "vendor/PROVENANCE.json"
+  "frozen_executable_validation": {
+    "status": "passed",
+    "cases": [
+      {
+        "case": "original",
+        "format": "tiff",
+        "values": [
+          33,
+          3.0,
+          true
+        ],
+        "agreeing_passes": 6,
+        "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+        "output_reexecuted": true
+      },
+      {
+        "case": "changed",
+        "format": "tiff",
+        "values": [
+          16,
+          3.0,
+          false
+        ],
+        "agreeing_passes": 6,
+        "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+        "output_reexecuted": true
+      },
+      {
+        "case": "original",
+        "format": "gif",
+        "values": [
+          33,
+          3.0,
+          true
+        ],
+        "agreeing_passes": 6,
+        "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+        "output_reexecuted": true
+      },
+      {
+        "case": "changed",
+        "format": "gif",
+        "values": [
+          16,
+          3.0,
+          false
+        ],
+        "agreeing_passes": 6,
+        "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+        "output_reexecuted": true
+      }
+    ],
+    "gui": "constructed_and_automatically_executed",
+    "rejections": [
+      {
+        "case": "blank-glyphs",
+        "computation_withheld": true
+      },
+      {
+        "case": "unapproved-runtime",
+        "computation_withheld": true
+      }
+    ],
+    "environment": "No PYTHONPATH, Tesseract environment or installed-toolchain PATH required"
   },
-  "limitations": [
-    "Unanimous OCR passes may share the same mistake.",
-    "Inherited confidence is heuristic; this release does not establish CER/WER improvement or searchable-PDF/plug-in ABI behavior.",
-    "Tesseract is a trusted separately installed executable; process/file limits are monitored, not an OS security sandbox.",
-    "File output can briefly exceed the cap between 25ms polls.",
-    "Actual backend validation used one Tesseract build, one English model and synthetic glyph fixtures.",
-    "No physical optical computation or full Penteract release qualification is claimed."
-  ],
-  "source_sha256": {
-    "glyph_goblin.py": "d284b78752217e6ad8e16e3b1e45903d64a45e98d94f133dfde62ab12a6f903c",
-    "ocr_bridge.py": "a200bceee28fbe31585a2109545b0888d16bcf121cc048f9421eea611f41673c",
-    "run.py": "838e9dccbf7be3df28b5ec1ae311c55100f6ec616e25a8247a941261deeb34d2",
-    "tests/test_glyph_goblin.py": "4e4fd0e96c9057251e879689957dd941183eef6925543b97d2b6f8bd36c42c99"
+  "frozen_archive_audit": {
+    "approved_loader_present": true,
+    "frozen_entries_checked": 505,
+    "interpreter_module_absent": true,
+    "runtime_payload_absent": true
   },
-  "example_sha256": {
-    "from-gif/result.gif": "bd5d28bbb124ccbc386a49ed9a8c4709eb53586e0fb12b3f3bcc042e511fbd8d",
-    "from-gif/result.tiff": "c6d202547619f03654e9764341423af7c00892d0bef02e48b0dbeb5fcf870e42",
-    "from-tiff/result.gif": "bd5d28bbb124ccbc386a49ed9a8c4709eb53586e0fb12b3f3bcc042e511fbd8d",
-    "from-tiff/result.tiff": "906808d14e48dde8d5594fdf20d428eb77c5f0b5b170ad325e11a50ce5c854ca",
-    "gif-receipt.json": "a54a6fa6217ab0d8a236bab9e3753573b1dd7e597ae2ef2feb42f696db6a8d7e",
-    "input.gif": "a2b1f039521dad58a8af4e64fa733e9df33be0a091f77ea28113f4650be89e0a",
-    "input.tiff": "23b799858817945b3e8a7b9e5bcd3f67341eaf3a920734df43212a9f69d45d25",
-    "ocr-evidence.json": "10d8e2f9b8399e080ea4784b342c196de1dbcb62384f6997915fc722228d2054",
-    "operator-variant/from-gif/result.gif": "2cd2f858cb74b68a18b213b9c9293ee93c32d3a4e1e6687ff48ec5f5ccc97b56",
-    "operator-variant/from-gif/result.tiff": "bfeac78dc07448040ab29131eef45f6c826ef7d9b9ed3b6669e970307c2d39d4",
-    "operator-variant/from-tiff/result.gif": "2cd2f858cb74b68a18b213b9c9293ee93c32d3a4e1e6687ff48ec5f5ccc97b56",
-    "operator-variant/from-tiff/result.tiff": "59835ff7b5b3170552dbde5d56456fa10860c6ea56be098752748754bd1a976b",
-    "operator-variant/gif-receipt.json": "e2bb533af6763c6c439d4cf0a0fb70af312e77e32811920141ab1223e1825bfc",
-    "operator-variant/input.gif": "c210ea7f25b68374c1d1cbd0c2f2a0c36b764239e90523d0231cca475556d6a1",
-    "operator-variant/input.tiff": "b2968b2b626f605cdb84c35ef66ff148a163cfded482b641bd4b5fda82395ddf",
-    "operator-variant/ocr-evidence.json": "59fcf733599d9593b26b9783a09dfe1e640ef9a48525c4f544d291ecebfdcf8d",
-    "operator-variant/receipt.json": "605bbf5ba583f3d45199e8e4ff5f8d4f227f8621ab907e11d5a9b5ea50fb6b93",
-    "operator-variant/result.gif": "2cd2f858cb74b68a18b213b9c9293ee93c32d3a4e1e6687ff48ec5f5ccc97b56",
-    "operator-variant/result.tiff": "59835ff7b5b3170552dbde5d56456fa10860c6ea56be098752748754bd1a976b",
-    "program-mutation-proof.json": "25f05c3180ee280fb13b142190dd1e517f74e816bb0de159a00f839941738242",
-    "receipt.json": "c8119a527b74daf488a1ac33cfeecee21ff3369b40dfcb511a47b36ef8aa8db8",
-    "result-preview.png": "095c57ec72fb181d104000c8329b389112aabdcedbbe1d14b1260818023fb8cb",
-    "result.gif": "bd5d28bbb124ccbc386a49ed9a8c4709eb53586e0fb12b3f3bcc042e511fbd8d",
-    "result.tiff": "906808d14e48dde8d5594fdf20d428eb77c5f0b5b170ad325e11a50ce5c854ca"
+  "ocr_build": {
+    "engine_sha256": "ff6787ac8487075827a74c77abf781299d68419ce8901a14fda45db5f0bb183d",
+    "model_sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+    "native_imports": [
+      "KERNEL32.dll",
+      "api-ms-win-crt-convert-l1-1-0.dll",
+      "api-ms-win-crt-environment-l1-1-0.dll",
+      "api-ms-win-crt-filesystem-l1-1-0.dll",
+      "api-ms-win-crt-heap-l1-1-0.dll",
+      "api-ms-win-crt-locale-l1-1-0.dll",
+      "api-ms-win-crt-math-l1-1-0.dll",
+      "api-ms-win-crt-private-l1-1-0.dll",
+      "api-ms-win-crt-runtime-l1-1-0.dll",
+      "api-ms-win-crt-stdio-l1-1-0.dll",
+      "api-ms-win-crt-string-l1-1-0.dll",
+      "api-ms-win-crt-time-l1-1-0.dll",
+      "api-ms-win-crt-utility-l1-1-0.dll"
+    ]
+  },
+  "upstream_source_sha256": {
+    "leptonica-1.85.0.tar.gz": "c01376bce0379d4ea4bc2ec5d5cbddaa49e2f06f88242619ab8c059e21adf233",
+    "tesseract-5.5.0.tar.gz": "f2fb34ca035b6d087a42875a35a7a5c4155fa9979c6132365b1e5a28ebc3fc11"
   },
   "processable_image_criterion": {
-    "image_program": "visible glyph operators, constants, parentheses and comparisons",
-    "input": "pixel rectangle selected by fixed checksummed raster header",
-    "execution": "actual Tesseract 5 -> all-pass AST structure agreement -> generic bounded AST interpreter",
-    "output": "computed result TIFF/GIF with original program glyph pixels preserved on every frame",
-    "operator_only_mutation_changes_result_in_both_carriers": true,
-    "job_header_and_operands_unchanged": true,
-    "final_output_frames_reexecute": true,
+    "image_program": "Visible numbers/operators/grouping plus approved interpreter source in raster payload",
+    "input": "Validated 960x720 image; actual OCR crop read from its pixels",
+    "execution": "Hash-approved recovered module parses OCR, requires all-pass AST agreement, evaluates bounded expressions",
+    "output": "Refreshed TIFF/GIF preserving exact original expression pixels and interpreter payload in each frame",
+    "operator_only_mutation_changes_results_in_both_formats": true,
+    "output_carrier_reexecution_checks": 4,
     "cpu_runtime_required": true,
     "hidden_expected_answers_used_by_execution": false,
-    "evidence": "examples/program-mutation-proof.json"
+    "evidence": "examples-v0.4.0/program-mutation-proof.json"
+  },
+  "fixed_findings": [
+    "Interpreter previously resided only in host source; v0.4 carries and loads it from pixels.",
+    "Source ZIP was not a consumer application; Windows release bundles the CPU bootstrap, OCR and English model.",
+    "GIF bulk seeking could decode an unchecked later oversized frame; structural preflight now checks all rectangles before native decoding.",
+    "Real source tests require fixture images; corresponding source ZIP now includes current fixtures.",
+    "Original native installer dependencies were unsuitable for a minimal audited bundle; OCR sensor rebuilt from upstream source with system-only DLL imports."
+  ],
+  "original_JA21_modules_unmodified": 10,
+  "original_source_hash_manifest": "vendor/PROVENANCE.json",
+  "limitations": [
+    "OCR passes can share the same mistake; inspect recognized expressions.",
+    "Inherited JA21 confidence is heuristic; no CER/WER improvement is claimed.",
+    "Approved source hashing is a trust boundary, not a general Python sandbox.",
+    "Native OCR is an external input sensor; operating-system memory/process isolation is not claimed.",
+    "File output may briefly exceed its monitored cap between polling intervals.",
+    "Real-backend evidence covers one native build, one English model and synthetic glyph fixtures.",
+    "No physical optical computation or full qualification of 32 Penteract workstreams is claimed."
+  ],
+  "source_sha256": {
+    "build_runtime.py": "84674e68c879d6ec020251269e1c28cdca80c3e9db1192cbb72ad03aed94e3c9",
+    "glyph_desktop.py": "19019484689b978243b8da57bfc83db249521e53c136801f78a2f3fe0d42d872",
+    "glyph_goblin.py": "afc2f30cd9c1f1e6cdb3b299d088d69490e14b3985b6196b1fb219ae8482cb00",
+    "image_interpreter.py": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+    "ocr_bridge.py": "85a4fc6bc7ef06ed684d9fa9cb46e21b08881928a6b78ebf9dd1d6d618637f44",
+    "package_release.py": "23fb70588e87c9c2a5ff07146092e0f9e037cccb7cd4770a9ecf3384ef5b79ec",
+    "release_helpers.py": "22b25b963c9e9b465ecb9063ed6556314e98a1da68b427ddecc4ffd39d4213dc",
+    "run.py": "838e9dccbf7be3df28b5ec1ae311c55100f6ec616e25a8247a941261deeb34d2",
+    "runtime_bootstrap.py": "50e9b28e8c1a5701b3e1dca881af739ae8d33b1e16226b0c2fd9d0b11272588a",
+    "trusted_runtime.py": "edfc620d4e5e496186baa1d0ed1c905ef511ad28e8e02704263dc2bedaaa4bfb"
+  },
+  "example_sha256": {
+    "from-gif/ocr-result.json": "a1bdeaeee6c0ecaa139a79d43da368ea5c704173bcf616a2851a04afa3334666",
+    "from-gif/receipt.json": "a74ae46a2a98fb2c1c47121e7b2fc404df250a6f288d3da20157f30e5a4bc45f",
+    "from-gif/result.gif": "edff9e29b66577bd3a7eea100eb8e1fac416ff4d9d381c6e7e1ca6f7320d451f",
+    "from-gif/result.tiff": "fe2f5dc659d942832668170e6418fa55bb2ca7947a1727e8d09dd3a349f878c4",
+    "from-tiff/ocr-result.json": "eecd5bce98d0b607fa7fc90c53b906f4558dfc491a4847f41bd5b8a600526431",
+    "from-tiff/receipt.json": "07c683ca10bdcc6292645b0e24cf56b4fbfb06b45f171e3badf95679447e49ff",
+    "from-tiff/result.gif": "edff9e29b66577bd3a7eea100eb8e1fac416ff4d9d381c6e7e1ca6f7320d451f",
+    "from-tiff/result.tiff": "1de062bf2e2e3fd10e29cea2b83b7397e6edfeae7618fd59955bcdedc4e279f7",
+    "input.gif": "479fa6cce461f94e221f8c7a6c10ecfcbe3e5251d248ad265127fda87dcddeeb",
+    "input.tiff": "d419f438ea61de23b14e8d3202ebad172fedf1f548132bf19f89e7df31791bb4",
+    "operator-variant/from-gif/ocr-result.json": "82e08d7f8bd660d7104f48b883b275e8768d1c5da9e7cf49e8eb174fad69166f",
+    "operator-variant/from-gif/receipt.json": "ca83a52e00fe3ce9a001ecd2e1d0be46d0b4d8fea3b477a01c9c4095545ae92b",
+    "operator-variant/from-gif/result.gif": "8bdcf4a1b5d04dd655c6df66836253805f35ad207aaf1dd47e728a1995e7a028",
+    "operator-variant/from-gif/result.tiff": "4a4bd347ac30d0c8de40fe62dfc5b6e21e7eaf01e1a94d980f36b718b0404401",
+    "operator-variant/from-tiff/ocr-result.json": "1aaedd20ce21281a23822c0b2d24370e861cc8e1bfb88ce7b2450feac97f6afc",
+    "operator-variant/from-tiff/receipt.json": "ad5b4aa9c4a0ea7732fb0006a2156fe6b93eb62e2749ad8f707a48bbd6c9a4da",
+    "operator-variant/from-tiff/result.gif": "8bdcf4a1b5d04dd655c6df66836253805f35ad207aaf1dd47e728a1995e7a028",
+    "operator-variant/from-tiff/result.tiff": "b7c820afe6ca5ada16f8e9631d8bc61bbd0d05645f7b069a1d2aa1de243ef445",
+    "operator-variant/input.gif": "5d2145785ed2f90aded23649ca8d30b0580a1e54e3ebef9f0e3efa2f8ca48b8e",
+    "operator-variant/input.tiff": "bcb5ecdd5c608e14a862b924e6dc19bcc334f12e94057f62466ff9e2c62e4815",
+    "program-mutation-proof.json": "e098abcd4bf3fac941dc9d04167dde3ac1b80d17d87e33d70e61d88196b1ffa5",
+    "result-preview.png": "81a3ddf13014fe4716ee1da7d5b79b13cdfd19fc0fa6b48aff8de896882b96db"
   }
 }

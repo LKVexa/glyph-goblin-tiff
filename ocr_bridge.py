@@ -148,11 +148,16 @@ def recognize(image, evidence_dir, *, executable=None, tessdata_dir=None):
     def run_pass(number, profile):
         prepared = folder / f"pass-{number}.png"
         preprocess_image(source, prepared, profile, options)
+        sensor_input = folder / f"pass-{number}.bmp"
         with Image.open(prepared) as opened:
             width, height = opened.size
+            # Lossless BMP transport permits a minimal Tesseract/Leptonica build
+            # without unrelated network/archive/image-codec dependencies. JA21's
+            # preprocessing and every RGB pixel are preserved.
+            opened.convert("RGB").save(sensor_input, format="BMP")
         base = folder / f"pass-{number}"
         text_path, tsv_path = base.with_suffix(".txt"), base.with_suffix(".tsv")
-        command = [str(engine), str(prepared), str(base), "--tessdata-dir", str(models), "-l", "eng",
+        command = [str(engine), str(sensor_input), str(base), "--tessdata-dir", str(models), "-l", "eng",
                    "--oem", "1", "--psm", str(profile.psm), "-c", "preserve_interword_spaces=1",
                    "-c", "tessedit_create_txt=1", "-c", "tessedit_create_tsv=1"]
         start = time.perf_counter()
@@ -164,7 +169,7 @@ def recognize(image, evidence_dir, *, executable=None, tessdata_dir=None):
         words, mean, invalid = parse_tsv(tsv)
         result = OcrPassResult(number, profile, text, canonical_from_words(words), mean, len(words), invalid,
                                words, tsv, round(time.perf_counter() - start, 5), [sanitize(v) for v in command],
-                               digest(prepared.read_bytes()), width, height, sanitize(stdout), sanitize(stderr))
+                               digest(sensor_input.read_bytes()), width, height, sanitize(stdout), sanitize(stderr))
         (folder / f"pass-{number}.stdout").write_text(sanitize(stdout), encoding="utf-8")
         (folder / f"pass-{number}.stderr").write_text(sanitize(stderr), encoding="utf-8")
         write_json(folder / f"pass-{number}.json", result.public_dict(include_words=True))
