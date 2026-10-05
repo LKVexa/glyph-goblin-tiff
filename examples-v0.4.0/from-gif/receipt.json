@@ -1,0 +1,49 @@
+{
+  "project": "glyph-goblin-tiff",
+  "version": "0.4.0",
+  "source_sha256": "479fa6cce461f94e221f8c7a6c10ecfcbe3e5251d248ad265127fda87dcddeeb",
+  "selected_frame": 0,
+  "accepted": true,
+  "expressions": [
+    "12 +7 * 3",
+    "(18 - 6) /4",
+    "5 > 3"
+  ],
+  "values": [
+    33,
+    3.0,
+    true
+  ],
+  "consensus": {
+    "agreeing_passes": 6,
+    "rule": "all pass AST structures agree",
+    "upstream_manual_review_required": true,
+    "scope": "agreement is not independent proof of OCR accuracy"
+  },
+  "backend": "JA21 0.3.2 helpers + bounded Tesseract 5 adapter",
+  "raw_ocr_sha256": "6eb17052d6a831acc14cf1fdae30b2e33d03f36228e27c2d8a3e395bf7feb336",
+  "program": {
+    "representation": "visible raster glyphs of arithmetic/logic expressions",
+    "glyph_pixels_sha256": "91b16041b7d40a92d5523608bdf055173c74696bdc4ce5d048c38bc917d19af0",
+    "interpreter": "hash-approved interpreter module recovered from raster pixels",
+    "runtime_location": "image pixels",
+    "runtime_sha256": "b21b3a8d0e9a96466477423f1c03ccae296a7f4c472a5ae8471aee2b122a1513",
+    "answers_supplied_by_metadata": false
+  },
+  "output_carriers": {
+    "TIFF": {
+      "file": "result.tiff",
+      "sha256": "fe2f5dc659d942832668170e6418fa55bb2ca7947a1727e8d09dd3a349f878c4",
+      "frames": 4,
+      "every_frame_preserves_program_pixels": true,
+      "payload_roundtrip": true
+    },
+    "GIF": {
+      "file": "result.gif",
+      "sha256": "edff9e29b66577bd3a7eea100eb8e1fac416ff4d9d381c6e7e1ca6f7320d451f",
+      "frames": 4,
+      "every_frame_preserves_program_pixels": true,
+      "payload_roundtrip": true
+    }
+  }
+}
